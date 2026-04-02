@@ -69,7 +69,7 @@ export default async function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {recentOrders.map((order) => (
-                  <tr key={order.order_id}>
+                  <tr key={order.orderId}>
                     <td className="px-3 py-2">{order.orderId}</td>
                     <td className="px-3 py-2">{order.orderTimestamp}</td>
                     <td className="px-3 py-2">{order.fulfilled ? "Yes" : "No"}</td>
