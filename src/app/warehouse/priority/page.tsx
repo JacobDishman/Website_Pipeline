@@ -15,24 +15,31 @@ type PriorityRow = {
 export default function WarehousePriorityPage() {
   ensureOrderPredictionsTable();
 
-  const queue = queryAll<PriorityRow>(
-    `SELECT
-      o.order_id,
-      o.order_datetime AS order_timestamp,
-      o.order_total AS total_value,
-      c.customer_id,
-      c.full_name AS customer_name,
-      p.late_delivery_probability,
-      p.predicted_late_delivery,
-      p.prediction_timestamp
-    FROM orders o
-    JOIN customers c ON c.customer_id = o.customer_id
-    JOIN order_predictions p ON p.order_id = o.order_id
-    LEFT JOIN shipments s ON s.order_id = o.order_id
-    WHERE s.shipment_id IS NULL
-    ORDER BY p.late_delivery_probability DESC, o.order_datetime ASC
-    LIMIT 50;`,
-  );
+  let queue: PriorityRow[] = [];
+  let errorMessage: string | null = null;
+
+  try {
+    queue = queryAll<PriorityRow>(
+      `SELECT
+        o.order_id,
+        o.order_datetime AS order_timestamp,
+        o.order_total AS total_value,
+        c.customer_id,
+        c.full_name AS customer_name,
+        p.late_delivery_probability,
+        p.predicted_late_delivery,
+        p.prediction_timestamp
+      FROM orders o
+      JOIN customers c ON c.customer_id = o.customer_id
+      JOIN order_predictions p ON p.order_id = o.order_id
+      LEFT JOIN shipments s ON s.order_id = o.order_id
+      WHERE s.shipment_id IS NULL
+      ORDER BY p.late_delivery_probability DESC, o.order_datetime ASC
+      LIMIT 50;`,
+    );
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "Unknown error";
+  }
 
   return (
     <section className="space-y-4">
@@ -41,6 +48,22 @@ export default function WarehousePriorityPage() {
         This queue prioritizes warehouse attention by surfacing unfulfilled orders with the highest
         predicted late-delivery probability. Run scoring to refresh predictions.
       </p>
+
+      {errorMessage ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+          <p>Unable to load the priority queue.</p>
+          <p className="break-all">Error: {errorMessage}</p>
+        </div>
+      ) : null}
+
+      {!errorMessage && queue.length === 0 ? (
+        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-200">
+          <p>No prioritized orders yet.</p>
+          <p className="text-zinc-600 dark:text-zinc-300">
+            Run scoring on <code>/scoring</code> to generate predictions in <code>order_predictions</code>.
+          </p>
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">

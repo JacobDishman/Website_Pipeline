@@ -1,4 +1,35 @@
 node_modules
+.next/
+.turbo/
+.vercel/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+
+# Python virtual environments
+.venv/
+venv/
+
+# Python tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test/coverage outputs
+coverage/
+
+# Logs
+*.log
 jobs/model/
 *.joblib
 __pycache__/

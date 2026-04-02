@@ -67,10 +67,24 @@ def engineer_features(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     order_items = tables["order_items"]
     shipments = tables["shipments"]
 
+    order_items_columns = {c.lower() for c in order_items.columns}
+    quantity_col = "quantity" if "quantity" in order_items_columns else "qty" if "qty" in order_items_columns else None
+    unit_price_col = (
+        "unit_price"
+        if "unit_price" in order_items_columns
+        else "price"
+        if "price" in order_items_columns
+        else None
+    )
+    if quantity_col is None:
+        raise ValueError("order_items must include a quantity column (quantity or qty).")
+    if unit_price_col is None:
+        raise ValueError("order_items must include a unit price column (unit_price or price).")
+
     item_agg = order_items.groupby("order_id").agg(
         item_count=("order_item_id", "count"),
-        total_qty=("quantity", "sum"),
-        avg_unit_price=("unit_price", "mean"),
+        total_qty=(quantity_col, "sum"),
+        avg_unit_price=(unit_price_col, "mean"),
         unique_products=("product_id", "nunique"),
     ).reset_index()
 
