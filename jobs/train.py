@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""
+Train the late-delivery prediction model and serialize it to jobs/model/.
+Run from the project root:  python jobs/train.py
+"""
+import json
+from pathlib import Path
+
+import joblib
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV, train_test_split
+from sklearn.pipeline import Pipeline
+
+from data_preparation import (
+    ALL_FEATURES,
+    CATEGORICAL_FEATURES,
+    NUMERIC_FEATURES,
+    build_preprocessor,
+    engineer_features,
+    load_tables,
+)
+
+DB_PATH = Path.cwd() / "shop.db"
+MODEL_DIR = Path(__file__).resolve().parent / "model"
+TARGET = "late_delivery"
+
+
+def main() -> int:
+    MODEL_DIR.mkdir(exist_ok=True)
+
+    print("Loading data …")
+    tables = load_tables(DB_PATH)
+    df = engineer_features(tables)
+
+    # Only rows with a known late_delivery label can be used for training
+    labeled = df[df[TARGET].notna()].copy()
+    labeled[TARGET] = labeled[TARGET].astype(int)
+    print(f"  Labeled rows: {len(labeled)}  (late={labeled[TARGET].sum()}, on-time={(labeled[TARGET]==0).sum()})")
+
+    X = labeled[ALL_FEATURES]
+    y = labeled[TARGET]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y,
+    )
+
+    preprocessor = build_preprocessor()
+
+    base_pipeline = Pipeline([
+        ("preprocessor", preprocessor),
+        ("classifier", RandomForestClassifier(
+            class_weight="balanced", random_state=42, n_jobs=-1,
+        )),
+    ])
+
+    param_grid = {
+        "classifier__n_estimators": [100, 200, 300, 400],
+        "classifier__max_depth": [4, 6, 8, 10, None],
+        "classifier__min_samples_split": [2, 5, 10],
+        "classifier__min_samples_leaf": [1, 2, 4],
+        "classifier__max_features": ["sqrt", "log2"],
+    }
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    print("Tuning with RandomizedSearchCV (20 iterations) …")
+    search = RandomizedSearchCV(
+        base_pipeline,
+        param_distributions=param_grid,
+        n_iter=20,
+        scoring="recall",
+        cv=cv,
+        random_state=42,
+        n_jobs=-1,
+        verbose=1,
+    )
+    search.fit(X_train, y_train)
+
+    best = search.best_estimator_
+    print(f"\nBest CV recall: {search.best_score_:.4f}")
+    print(f"Best params:    {search.best_params_}")
+
+    y_pred = best.predict(X_test)
+    y_prob = best.predict_proba(X_test)[:, 1]
+    print("\n--- Test-set performance ---")
+    print(classification_report(y_test, y_pred, target_names=["On-time", "Late"]))
+    print(f"ROC-AUC: {roc_auc_score(y_test, y_prob):.4f}")
+
+    # Refit on ALL labeled data before serializing
+    best.fit(X, y)
+
+    model_path = MODEL_DIR / "model.pkl"
+    joblib.dump(best, model_path)
+    print(f"\nModel saved to {model_path}  ({model_path.stat().st_size / 1024:.0f} KB)")
+
+    feature_path = MODEL_DIR / "feature_columns.json"
+    feature_path.write_text(json.dumps(ALL_FEATURES, indent=2))
+    print(f"Feature list saved to {feature_path}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

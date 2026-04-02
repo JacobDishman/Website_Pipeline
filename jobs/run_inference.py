@@ -1,77 +1,70 @@
 #!/usr/bin/env python3
+"""
+Score every order in shop.db using the trained late-delivery model.
+Called by the website:  python3 jobs/run_inference.py
+Must print SCORED_ORDERS=<n> to stdout and exit 0 on success.
+"""
+import json
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import joblib
+import pandas as pd
 
-def clamp(value: float, low: float, high: float) -> float:
-    return max(low, min(high, value))
+THRESHOLD = 0.5
+DB_PATH = Path.cwd() / "shop.db"
+MODEL_DIR = Path(__file__).resolve().parent / "model"
+
+# Import shared feature engineering from the same package
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from data_preparation import ALL_FEATURES, engineer_features, load_tables
 
 
 def main() -> int:
-    db_path = Path.cwd() / "shop.db"
-    connection = sqlite3.connect(db_path)
-    connection.row_factory = sqlite3.Row
-    cursor = connection.cursor()
+    model_path = MODEL_DIR / "model.pkl"
+    if not model_path.exists():
+        print(f"ERROR: trained model not found at {model_path}", file=sys.stderr)
+        print("Run  python jobs/train.py  first.", file=sys.stderr)
+        return 1
 
-    cursor.execute(
-        """
+    model = joblib.load(model_path)
+
+    tables = load_tables(DB_PATH)
+    df = engineer_features(tables)
+
+    X = df[ALL_FEATURES]
+    probabilities = model.predict_proba(X)[:, 1]
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS order_predictions (
-          order_id INTEGER PRIMARY KEY,
-          late_delivery_probability REAL NOT NULL,
-          predicted_late_delivery INTEGER NOT NULL,
-          prediction_timestamp TEXT NOT NULL
+            order_id                  INTEGER PRIMARY KEY,
+            late_delivery_probability REAL    NOT NULL,
+            predicted_late_delivery   INTEGER NOT NULL,
+            prediction_timestamp      TEXT    NOT NULL
         )
-        """
-    )
-
-    rows = cursor.execute(
-        """
-        SELECT
-          o.order_id,
-          o.order_total,
-          o.promo_used,
-          o.shipping_fee,
-          COALESCE(s.late_delivery, 0) AS late_delivery
-        FROM orders o
-        LEFT JOIN shipments s ON s.order_id = o.order_id
-        """
-    ).fetchall()
+    """)
 
     updated = 0
-    for row in rows:
-        base = 0.1
-        total_component = clamp(float(row["order_total"]) / 400.0, 0.0, 0.55)
-        promo_component = 0.08 if int(row["promo_used"]) == 1 else 0.0
-        shipping_component = clamp(float(row["shipping_fee"]) / 40.0, 0.0, 0.1)
-        late_component = 0.2 if int(row["late_delivery"]) == 1 else 0.0
-        probability = clamp(
-            base + total_component + promo_component + shipping_component + late_component,
-            0.0,
-            0.99,
-        )
-        predicted = 1 if probability >= 0.5 else 0
-        timestamp = datetime.now(timezone.utc).isoformat()
-
-        cursor.execute(
-            """
-            INSERT INTO order_predictions (
-              order_id,
-              late_delivery_probability,
-              predicted_late_delivery,
-              prediction_timestamp
-            ) VALUES (?, ?, ?, ?)
+    for order_id, prob in zip(df["order_id"], probabilities):
+        cur.execute("""
+            INSERT INTO order_predictions
+                (order_id, late_delivery_probability, predicted_late_delivery, prediction_timestamp)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(order_id) DO UPDATE SET
-              late_delivery_probability=excluded.late_delivery_probability,
-              predicted_late_delivery=excluded.predicted_late_delivery,
-              prediction_timestamp=excluded.prediction_timestamp
-            """,
-            (int(row["order_id"]), float(probability), int(predicted), timestamp),
-        )
+                late_delivery_probability  = excluded.late_delivery_probability,
+                predicted_late_delivery    = excluded.predicted_late_delivery,
+                prediction_timestamp       = excluded.prediction_timestamp
+        """, (int(order_id), float(prob), int(prob >= THRESHOLD), timestamp))
         updated += 1
 
-    connection.commit()
-    connection.close()
+    conn.commit()
+    conn.close()
     print(f"SCORED_ORDERS={updated}")
     return 0
 
