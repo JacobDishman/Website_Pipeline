@@ -1,0 +1,33 @@
+{
+  "model_name": "fraud_detection_pipeline",
+  "model_version": "1.0.0",
+  "trained_at_utc": "2026-04-04T23:34:57.037670",
+  "data_source": "shop.db",
+  "num_training_rows": 4000,
+  "num_test_rows": 1000,
+  "features": [
+    "order_subtotal",
+    "shipping_fee",
+    "tax_amount",
+    "order_total",
+    "risk_score",
+    "promo_used",
+    "item_count",
+    "total_qty",
+    "avg_unit_price",
+    "unique_products",
+    "order_hour",
+    "order_dow",
+    "is_weekend",
+    "zip_mismatch",
+    "is_international",
+    "subtotal_ratio",
+    "log_order_total",
+    "payment_method",
+    "device_type",
+    "gender",
+    "customer_segment",
+    "loyalty_tier"
+  ],
+  "target": "is_fraud"
+}

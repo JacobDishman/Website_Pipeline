@@ -1,0 +1,32 @@
+{
+  "accuracy": 0.707,
+  "f1": 0.2349869451697128,
+  "roc_auc": 0.8115818643162392,
+  "classification_report": {
+    "Legit": {
+      "precision": 0.9720998531571219,
+      "recall": 0.7072649572649573,
+      "f1-score": 0.8188002473716759,
+      "support": 936.0
+    },
+    "Fraud": {
+      "precision": 0.14106583072100312,
+      "recall": 0.703125,
+      "f1-score": 0.2349869451697128,
+      "support": 64.0
+    },
+    "accuracy": 0.707,
+    "macro avg": {
+      "precision": 0.5565828419390625,
+      "recall": 0.7051949786324787,
+      "f1-score": 0.5268935962706943,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.9189136757212102,
+      "recall": 0.707,
+      "f1-score": 0.7814361960307502,
+      "support": 1000.0
+    }
+  }
+}
