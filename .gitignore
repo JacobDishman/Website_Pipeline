@@ -30,7 +30,8 @@ coverage/
 
 # Logs
 *.log
-jobs/model/
+# jobs/model/ - committed for Vercel deployment
 *.joblib
 __pycache__/
 *.pyc
+.vercel
