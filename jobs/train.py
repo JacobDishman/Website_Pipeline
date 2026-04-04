@@ -108,6 +108,38 @@ def main() -> int:
     feature_path.write_text(json.dumps(ALL_FEATURES, indent=2))
     print(f"Feature list saved to {feature_path}")
 
+    # Save model metadata (version, timestamp, row counts, feature list)
+    from datetime import datetime
+    model_version = "1.0.0"
+    metadata = {
+        "model_name": "late_delivery_pipeline",
+        "model_version": model_version,
+        "trained_at_utc": datetime.utcnow().isoformat(),
+        "warehouse_table": "orders (via Supabase)",
+        "num_training_rows": int(X_train.shape[0]),
+        "num_test_rows": int(X_test.shape[0]),
+        "num_total_labeled_rows": int(len(labeled)),
+        "features": ALL_FEATURES,
+        "target": TARGET,
+    }
+    metadata_path = MODEL_DIR / "model_metadata.json"
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+    print(f"Metadata saved to {metadata_path}")
+
+    # Save evaluation metrics
+    from sklearn.metrics import accuracy_score, f1_score, classification_report as cls_report
+    metrics = {
+        "accuracy": float(accuracy_score(y_test, y_pred)),
+        "f1": float(f1_score(y_test, y_pred)),
+        "roc_auc": float(roc_auc_score(y_test, y_prob)),
+        "classification_report": cls_report(y_test, y_pred, target_names=["On-time", "Late"], output_dict=True),
+    }
+    metrics_path = MODEL_DIR / "metrics.json"
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+    print(f"Metrics saved to {metrics_path}")
+
     return 0
 
 
