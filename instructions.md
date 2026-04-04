@@ -1,3 +1,10 @@
+Your deployed app should include:
+
+- A “Select Customer” screen (no signup/login required)
+- The ability to place a new order and save it to the database
+- An order history page for the administrator
+- A “Run Scoring” button that triggers the ML inference job and refreshes the priority queue (of orders to verify before fulfilling)
+
 ### STEP 1 ###
 
 You are generating a complete student project web app using Next.js (App Router) and SQLite.
