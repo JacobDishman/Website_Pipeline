@@ -111,8 +111,8 @@ def engineer_features(tables):
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
-        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "").strip()
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 
         if not url or not key:
             self.send_response(500)
