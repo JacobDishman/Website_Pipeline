@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Shop Operations Dashboard",
-  description: "Student project app using Next.js and SQLite",
+  description: "Student project app using Next.js and Supabase",
 };
 
 const navigationLinks = [
@@ -43,7 +43,7 @@ export default async function RootLayout({
 
   const selectedCustomer =
     Number.isInteger(parsedCustomerId) && parsedCustomerId > 0
-      ? getCustomerById(parsedCustomerId)
+      ? await getCustomerById(parsedCustomerId)
       : undefined;
 
   return (

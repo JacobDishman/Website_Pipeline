@@ -2,8 +2,12 @@
 """
 Train the late-delivery prediction model and serialize it to jobs/model/.
 Run from the project root:  python jobs/train.py
+
+Connects to Supabase via REST API (SUPABASE_URL + SUPABASE_KEY env vars).
 """
 import json
+import os
+import sys
 from pathlib import Path
 
 import joblib
@@ -12,6 +16,7 @@ from sklearn.metrics import classification_report, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from data_preparation import (
     ALL_FEATURES,
     CATEGORICAL_FEATURES,
@@ -21,16 +26,21 @@ from data_preparation import (
     load_tables,
 )
 
-DB_PATH = Path.cwd() / "shop.db"
 MODEL_DIR = Path(__file__).resolve().parent / "model"
 TARGET = "late_delivery"
 
 
 def main() -> int:
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        print("ERROR: SUPABASE_URL and SUPABASE_KEY environment variables are required.", file=sys.stderr)
+        return 1
+
     MODEL_DIR.mkdir(exist_ok=True)
 
-    print("Loading data …")
-    tables = load_tables(DB_PATH)
+    print("Loading data ...")
+    tables = load_tables()  # Uses SUPABASE_URL/SUPABASE_KEY env vars
     df = engineer_features(tables)
 
     # Only rows with a known late_delivery label can be used for training
@@ -64,7 +74,7 @@ def main() -> int:
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-    print("Tuning with RandomizedSearchCV (20 iterations) …")
+    print("Tuning with RandomizedSearchCV (20 iterations) ...")
     search = RandomizedSearchCV(
         base_pipeline,
         param_distributions=param_grid,

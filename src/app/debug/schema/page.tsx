@@ -1,51 +1,32 @@
-import { queryAll } from "@/lib/db";
+import { supabase } from "@/lib/db";
 
-type TableRow = {
-  name: string;
+type SchemaRow = {
+  table_name: string;
+  column_name: string;
+  data_type: string;
 };
 
-type ColumnRow = {
-  name: string;
-  type: string;
-};
-
-function escapeSqlString(value: string): string {
-  return value.replaceAll("'", "''");
-}
-
-function getSchemaSnapshot() {
-  const tables = queryAll<TableRow>(
-    `
-      SELECT name
-      FROM sqlite_master
-      WHERE type = 'table'
-        AND name NOT LIKE 'sqlite_%'
-      ORDER BY name
-    `,
-  );
-
-  return tables.map((table) => {
-    const safeTableName = escapeSqlString(table.name);
-    const columns = queryAll<ColumnRow>(
-      `PRAGMA table_info('${safeTableName}')`,
-    ).map((column) => ({
-      name: column.name,
-      type: column.type || "(unspecified)",
-    }));
-
-    return {
-      tableName: table.name,
-      columns,
-    };
-  });
-}
-
-export default function DebugSchemaPage() {
-  let schema: ReturnType<typeof getSchemaSnapshot> = [];
+export default async function DebugSchemaPage() {
   let errorMessage: string | null = null;
+  let schema: { tableName: string; columns: { name: string; type: string }[] }[] = [];
 
   try {
-    schema = getSchemaSnapshot();
+    const { data, error } = await supabase.rpc("get_schema_info");
+    if (error) throw new Error(error.message);
+
+    const rows = (data ?? []) as SchemaRow[];
+    const grouped = new Map<string, { name: string; type: string }[]>();
+    for (const row of rows) {
+      if (!grouped.has(row.table_name)) {
+        grouped.set(row.table_name, []);
+      }
+      grouped.get(row.table_name)!.push({ name: row.column_name, type: row.data_type });
+    }
+
+    schema = Array.from(grouped.entries()).map(([tableName, columns]) => ({
+      tableName,
+      columns,
+    }));
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unknown error";
   }
@@ -55,7 +36,7 @@ export default function DebugSchemaPage() {
       <section className="space-y-2">
         <h2 className="text-2xl font-semibold">Database Schema Debug</h2>
         <p className="text-zinc-700 dark:text-zinc-300">
-          Unable to read schema from <code>shop.db</code>.
+          Unable to read schema from Supabase.
         </p>
         <pre className="overflow-x-auto rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
           {errorMessage}
@@ -69,7 +50,7 @@ export default function DebugSchemaPage() {
       <section className="space-y-2">
         <h2 className="text-2xl font-semibold">Database Schema Debug</h2>
         <p className="text-zinc-700 dark:text-zinc-300">
-          No tables were found in <code>shop.db</code>.
+          No tables were found in the database.
         </p>
       </section>
     );
@@ -80,7 +61,7 @@ export default function DebugSchemaPage() {
       <div className="space-y-1">
         <h2 className="text-2xl font-semibold">Database Schema Debug</h2>
         <p className="text-zinc-700 dark:text-zinc-300">
-          Table names and column types from <code>shop.db</code>.
+          Table names and column types from Supabase PostgreSQL.
         </p>
       </div>
 

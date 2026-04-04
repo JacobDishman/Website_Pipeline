@@ -21,14 +21,14 @@ export default async function DashboardPage() {
     redirect("/select-customer");
   }
 
-  const customer = getCustomerById(parsedCustomerId);
+  const customer = await getCustomerById(parsedCustomerId);
 
   if (!customer) {
     redirect("/select-customer");
   }
 
-  const summary = getOrderSummary(parsedCustomerId);
-  const recentOrders = getOrdersForCustomer(parsedCustomerId, 5);
+  const summary = await getOrderSummary(parsedCustomerId);
+  const recentOrders = await getOrdersForCustomer(parsedCustomerId, 5);
 
   return (
     <section className="space-y-6">

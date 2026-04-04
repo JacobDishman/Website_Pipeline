@@ -26,7 +26,7 @@ export default async function OrdersPage({
 
   const { success, orderId } = await searchParams;
   const showSuccess = success === "1";
-  const orders = getOrdersForCustomer(parsedCustomerId);
+  const orders = await getOrdersForCustomer(parsedCustomerId);
 
   const formatCurrency = (amount: number): string =>
     new Intl.NumberFormat("en-US", {

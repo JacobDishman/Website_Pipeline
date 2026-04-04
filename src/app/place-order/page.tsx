@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { queryAll } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { getCustomerById } from "@/lib/shop-queries";
 import { placeOrderAction } from "./actions";
 
@@ -48,17 +48,18 @@ export default async function PlaceOrderPage({
     redirect("/select-customer");
   }
 
-  const customer = getCustomerById(parsedCustomerId);
+  const customer = await getCustomerById(parsedCustomerId);
 
   if (!customer) {
     redirect("/select-customer");
   }
 
-  const products = queryAll<ProductRow>(
-    `SELECT product_id, product_name, price
-     FROM products
-     ORDER BY product_name ASC`,
-  );
+  const { data: products } = await supabase
+    .from("products")
+    .select("product_id, product_name, price")
+    .order("product_name", { ascending: true });
+
+  const productList: ProductRow[] = products ?? [];
 
   return (
     <section className="space-y-6">
@@ -94,7 +95,7 @@ export default async function PlaceOrderPage({
                       className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-950"
                     >
                       <option value="">Select a product</option>
-                      {products.map((product) => (
+                      {productList.map((product) => (
                         <option key={product.product_id} value={product.product_id}>
                           {product.product_name} ({formatCurrency(Number(product.price))})
                         </option>

@@ -17,7 +17,7 @@ async function selectCustomerAction(formData: FormData) {
     return;
   }
 
-  const customer = getCustomerById(customerId);
+  const customer = await getCustomerById(customerId);
 
   if (!customer) {
     return;
@@ -42,7 +42,7 @@ export default async function SelectCustomerPage({
   const { q } = await searchParams;
   const searchTerm = (q ?? "").trim();
 
-  const customers = searchCustomers(searchTerm);
+  const customers = await searchCustomers(searchTerm);
 
   return (
     <section className="space-y-5">

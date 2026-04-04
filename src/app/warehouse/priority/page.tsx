@@ -1,5 +1,4 @@
-import { queryAll } from "@/lib/db";
-import { ensureOrderPredictionsTable } from "@/lib/db-migrations";
+import { supabase } from "@/lib/db";
 
 type PriorityRow = {
   order_id: number;
@@ -12,31 +11,14 @@ type PriorityRow = {
   prediction_timestamp: string;
 };
 
-export default function WarehousePriorityPage() {
-  ensureOrderPredictionsTable();
-
+export default async function WarehousePriorityPage() {
   let queue: PriorityRow[] = [];
   let errorMessage: string | null = null;
 
   try {
-    queue = queryAll<PriorityRow>(
-      `SELECT
-        o.order_id,
-        o.order_datetime AS order_timestamp,
-        o.order_total AS total_value,
-        c.customer_id,
-        c.full_name AS customer_name,
-        p.late_delivery_probability,
-        p.predicted_late_delivery,
-        p.prediction_timestamp
-      FROM orders o
-      JOIN customers c ON c.customer_id = o.customer_id
-      JOIN order_predictions p ON p.order_id = o.order_id
-      LEFT JOIN shipments s ON s.order_id = o.order_id
-      WHERE s.shipment_id IS NULL
-      ORDER BY p.late_delivery_probability DESC, o.order_datetime ASC
-      LIMIT 50;`,
-    );
+    const { data, error } = await supabase.rpc("get_priority_queue");
+    if (error) throw new Error(error.message);
+    queue = (data ?? []) as PriorityRow[];
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unknown error";
   }

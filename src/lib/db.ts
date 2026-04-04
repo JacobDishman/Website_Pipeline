@@ -1,37 +1,8 @@
 import "server-only";
 
-import path from "node:path";
-import Database from "better-sqlite3";
+import { createClient } from "@supabase/supabase-js";
 
-const resolvedDbPath = path.resolve(
-  process.cwd(),
-  process.env.SHOP_DB_PATH ?? "shop.db",
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-const db = new Database(resolvedDbPath);
-
-type SqlParams = readonly unknown[];
-
-export function queryAll<T>(sql: string, params: SqlParams = []): T[] {
-  return db.prepare(sql).all(...params) as T[];
-}
-
-export function queryOne<T>(sql: string, params: SqlParams = []): T | undefined {
-  return db.prepare(sql).get(...params) as T | undefined;
-}
-
-export function execute(
-  sql: string,
-  params: SqlParams = [],
-): { changes: number; lastInsertRowid: number | bigint } {
-  const result = db.prepare(sql).run(...params);
-  return {
-    changes: result.changes,
-    lastInsertRowid: result.lastInsertRowid,
-  };
-}
-
-export function withTransaction<T>(callback: () => T): T {
-  const transaction = db.transaction(callback);
-  return transaction();
-}
+export const supabase = createClient(supabaseUrl, supabaseKey);

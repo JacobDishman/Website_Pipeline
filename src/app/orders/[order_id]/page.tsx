@@ -36,12 +36,12 @@ export default async function OrderDetailsPage({
     redirect("/orders");
   }
 
-  const order = getOrderForCustomer(parsedCustomerId, orderId);
+  const order = await getOrderForCustomer(parsedCustomerId, orderId);
   if (!order) {
     redirect("/orders");
   }
 
-  const items = getOrderLineItems(orderId);
+  const items = await getOrderLineItems(orderId);
 
   return (
     <section className="space-y-4">

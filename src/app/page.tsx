@@ -1,12 +1,9 @@
 import Link from "next/link";
-import { queryOne } from "@/lib/db";
-
-type DbHealthRow = {
-  ok: number;
-};
+import { supabase } from "@/lib/db";
 
 export default async function Home() {
-  const dbHealth = queryOne<DbHealthRow>("SELECT 1 AS ok");
+  const { error } = await supabase.from("customers").select("customer_id").limit(1);
+  const dbOk = !error;
 
   return (
     <section className="space-y-4 font-sans">
@@ -18,7 +15,7 @@ export default async function Home() {
       <p className="text-zinc-700 dark:text-zinc-300">
         Database smoke test:{" "}
         <span className="font-medium">
-          {dbHealth?.ok === 1 ? "connected (SELECT 1 succeeded)" : "unavailable"}
+          {dbOk ? "connected (Supabase OK)" : "unavailable"}
         </span>
       </p>
       <div className="flex flex-wrap gap-3 pt-2">

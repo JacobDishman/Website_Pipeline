@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { redirect } from "next/navigation";
-import { ensureOrderPredictionsTable } from "@/lib/db-migrations";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 const execFileAsync = promisify(execFile);
 
@@ -18,7 +18,6 @@ function getScoredOrdersCount(stdout: string): number | null {
 }
 
 export async function runScoringAction() {
-  ensureOrderPredictionsTable();
   const scriptPath = path.join(process.cwd(), "jobs", "run_inference.py");
   const modelPath = path.join(process.cwd(), "jobs", "model", "model.pkl");
   const timestamp = new Date().toISOString();
@@ -35,8 +34,13 @@ export async function runScoringAction() {
     }
 
     const { stdout, stderr } = await execFileAsync("python3", [scriptPath], {
-      timeout: 30_000,
+      timeout: 60_000,
       maxBuffer: 2 * 1024 * 1024,
+      env: {
+        ...process.env,
+        SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+        SUPABASE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+      },
     });
 
     const scoredOrders = getScoredOrdersCount(stdout) ?? 0;
@@ -48,6 +52,10 @@ export async function runScoringAction() {
       }`,
     );
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     const err = error as unknown as {
       message?: string;
       stdout?: string | Buffer;
