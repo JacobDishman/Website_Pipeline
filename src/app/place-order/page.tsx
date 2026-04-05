@@ -3,16 +3,11 @@ import { redirect } from "next/navigation";
 import { supabase } from "@/lib/db";
 import { getCustomerById } from "@/lib/shop-queries";
 import { placeOrderAction } from "./actions";
+import OrderForm from "./order-form";
 
 type SearchParams = Promise<{
   error?: string;
 }>;
-
-type ProductRow = {
-  product_id: number;
-  product_name: string;
-  price: number;
-};
 
 const ERROR_MESSAGES: Record<string, string> = {
   incomplete_line_item: "Each filled row must include both a product and quantity.",
@@ -23,13 +18,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   schema_error: "Required order table columns are missing. Check database schema.",
   order_create_failed: "Could not create order. Please try again.",
 };
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-}
 
 export default async function PlaceOrderPage({
   searchParams,
@@ -59,8 +47,6 @@ export default async function PlaceOrderPage({
     .select("product_id, product_name, price")
     .order("product_name", { ascending: true });
 
-  const productList: ProductRow[] = products ?? [];
-
   return (
     <section className="space-y-6">
       <header className="space-y-1">
@@ -76,55 +62,7 @@ export default async function PlaceOrderPage({
         </p>
       ) : null}
 
-      <form action={placeOrderAction} className="space-y-4">
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-          <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-            <thead className="bg-zinc-50 dark:bg-zinc-900">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">Product</th>
-                <th className="px-3 py-2 text-left font-medium">Quantity</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <tr key={index}>
-                  <td className="px-3 py-2">
-                    <select
-                      name="product_id"
-                      defaultValue=""
-                      className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-950"
-                    >
-                      <option value="">Select a product</option>
-                      {productList.map((product) => (
-                        <option key={product.product_id} value={product.product_id}>
-                          {product.product_name} ({formatCurrency(Number(product.price))})
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      name="quantity"
-                      min={1}
-                      step={1}
-                      placeholder="1"
-                      className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-950"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <button
-          type="submit"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          Place Order
-        </button>
-      </form>
+      <OrderForm products={products ?? []} action={placeOrderAction} />
     </section>
   );
 }
