@@ -1,4 +1,5 @@
 import { runScoringAction } from "./actions";
+import ScoringButton from "./scoring-button";
 
 type SearchParams = Promise<{
   status?: string;
@@ -25,12 +26,7 @@ export default async function ScoringPage({
       </p>
 
       <form action={runScoringAction}>
-        <button
-          type="submit"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          Run Scoring
-        </button>
+        <ScoringButton />
       </form>
 
       {params.status === "success" ? (
