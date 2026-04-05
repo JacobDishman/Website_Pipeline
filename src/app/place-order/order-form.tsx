@@ -29,6 +29,14 @@ function SubmitButton() {
   );
 }
 
+type LineItem = {
+  id: number;
+  productId: string;
+  quantity: string;
+};
+
+let nextId = 1;
+
 export default function OrderForm({
   products,
   action,
@@ -36,7 +44,20 @@ export default function OrderForm({
   products: ProductRow[];
   action: (formData: FormData) => void;
 }) {
-  const [rowCount, setRowCount] = useState(1);
+  const [rows, setRows] = useState<LineItem[]>([
+    { id: nextId++, productId: "", quantity: "" },
+  ]);
+
+  const addRow = () =>
+    setRows((prev) => [...prev, { id: nextId++, productId: "", quantity: "" }]);
+
+  const removeRow = (id: number) =>
+    setRows((prev) => prev.filter((r) => r.id !== id));
+
+  const updateRow = (id: number, field: keyof LineItem, value: string) =>
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
 
   return (
     <form action={action} className="space-y-4">
@@ -50,12 +71,15 @@ export default function OrderForm({
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {Array.from({ length: rowCount }).map((_, index) => (
-              <tr key={index}>
+            {rows.map((row) => (
+              <tr key={row.id}>
                 <td className="px-3 py-2">
                   <select
                     name="product_id"
-                    defaultValue=""
+                    value={row.productId}
+                    onChange={(e) =>
+                      updateRow(row.id, "productId", e.target.value)
+                    }
                     className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-950"
                   >
                     <option value="">Select a product</option>
@@ -73,14 +97,18 @@ export default function OrderForm({
                     min={1}
                     step={1}
                     placeholder="1"
+                    value={row.quantity}
+                    onChange={(e) =>
+                      updateRow(row.id, "quantity", e.target.value)
+                    }
                     className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-950"
                   />
                 </td>
                 <td className="px-3 py-2">
-                  {rowCount > 1 ? (
+                  {rows.length > 1 ? (
                     <button
                       type="button"
-                      onClick={() => setRowCount((c) => c - 1)}
+                      onClick={() => removeRow(row.id)}
                       className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                       aria-label="Remove row"
                     >
@@ -98,7 +126,7 @@ export default function OrderForm({
         <SubmitButton />
         <button
           type="button"
-          onClick={() => setRowCount((c) => c + 1)}
+          onClick={addRow}
           className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
         >
           Add Line Item
